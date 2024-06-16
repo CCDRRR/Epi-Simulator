@@ -6,7 +6,6 @@ Created on Sun Jun 16 17:33:57 2024
 """
 
 import random
-import pandas as pd
 from mesa import Model
 from mesa.time import RandomActivation
 from mesa.space import MultiGrid
@@ -14,7 +13,7 @@ from mesa.datacollection import DataCollector
 from Agent import SIERDAgent
 
 class SIERDModel(Model):
-    def __init__(self, width, height, density, transmission_rate, latency_period, infection_duration, recovery_rate, policy, initial_infected):
+    def __init__(self, width, height, density, transmission_rate, latency_period, infection_duration, recovery_rate, policy, num_districts, initial_infected):
         """
         Initialize a SIERDModel.
 
@@ -27,7 +26,8 @@ class SIERDModel(Model):
             infection_duration: Number of steps an agent stays in the infected state.
             recovery_rate: Probability of recovering from the infected state.
             policy: Policy applied to agents (e.g., Mask Policy Only, Lockdown Only)
-            initial_infected: Initial number of infected agents.
+            num_districts: Number of districts in the environment.
+            initial_infected: Number of initially infected agents
         """
         self.num_agents = int(width * height * density)
         self.grid = MultiGrid(width, height, True)
@@ -37,7 +37,10 @@ class SIERDModel(Model):
         self.infection_duration = infection_duration
         self.recovery_rate = recovery_rate
         self.policy = policy
-        self.initial_infected = initial_infected
+        self.time_of_day = "morning"
+        self.num_districts = num_districts
+        self.districts = self.create_districts(num_districts, width, height)
+        self.lockdown_areas = set()
 
         for i in range(self.num_agents):
             wearing_mask = False
@@ -52,12 +55,12 @@ class SIERDModel(Model):
             
             agent = SIERDAgent(i, self, wearing_mask, isolated)
             self.schedule.add(agent)
-            x = random.randrange(self.grid.width)
-            y = random.randrange(self.grid.height)
+            x = self.random.randrange(self.grid.width)
+            y = self.random.randrange(self.grid.height)
             self.grid.place_agent(agent, (x, y))
 
         # Initialize some agents as infected
-        infected_agents = random.sample(self.schedule.agents, k=self.initial_infected)
+        infected_agents = self.random.sample(self.schedule.agents, k=initial_infected)
         for agent in infected_agents:
             agent.state = "Infected"
             agent.infection_time = self.schedule.time
@@ -79,22 +82,32 @@ class SIERDModel(Model):
         """
         return sum([1 for agent in model.schedule.agents if agent.state == state])
 
+    def create_districts(self, num_districts, width, height):
+        districts = {}
+        step = width // num_districts
+        for i in range(num_districts):
+            for j in range(num_districts):
+                district_id = i * num_districts + j
+                for x in range(i * step, (i + 1) * step):
+                    for y in range(j * step, (j + 1) * step):
+                        districts[(x, y)] = district_id
+        return districts
+
+    def is_lockdown(self, area):
+        return self.districts.get(area) in self.lockdown_areas
+
+    def set_lockdown(self, district_id):
+        self.lockdown_areas.add(district_id)
+
+    def lift_lockdown(self, district_id):
+        self.lockdown_areas.discard(district_id)
+
     def step(self):
         self.datacollector.collect(self)
         self.schedule.step()
-
-    def get_results_dataframe(self):
-        """
-        Get the results as a pandas DataFrame.
-        """
-        return self.datacollector.get_model_vars_dataframe()
-
-    def save_results_to_csv(self, filename):
-        """
-        Save the results to a CSV file.
-
-        Args:
-            filename: The name of the CSV file.
-        """
-        df = self.get_results_dataframe()
-        df.to_csv(filename, index_label="Step")
+        if self.time_of_day == "morning":
+            self.time_of_day = "afternoon"
+        elif self.time_of_day == "afternoon":
+            self.time_of_day = "night"
+        else:
+            self.time_of_day = "morning"

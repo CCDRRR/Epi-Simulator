@@ -5,6 +5,7 @@ Created on Sun Jun 16 17:32:03 2024
 @author: alext
 """
 
+import numpy as np
 import random
 from mesa import Agent
 
@@ -26,11 +27,23 @@ class SIERDAgent(Agent):
         self.wearing_mask = wearing_mask  # Indicates if the agent is wearing a mask
         self.isolated = isolated  # Indicates if the agent is in isolation
         self.recovered = recovered  # Indicates if the agent has recovered from infection
+        self.infection_history = []  # History of infections
+
+        # Initialize residence and workplace
+        self.residence_area = (random.randint(0, model.grid.width - 1), random.randint(0, model.grid.height - 1))
+        self.workplace = (random.randint(0, model.grid.width - 1), random.randint(0, model.grid.height - 1))
 
     def step(self):
         """
         The step method defines the agent's behavior at each time step.
         """
+        if self.model.time_of_day == "morning":
+            self.move_to_work()
+        elif self.model.time_of_day == "afternoon":
+            self.move_randomly()
+        elif self.model.time_of_day == "night":
+            self.move_to_residence()
+
         if self.state == "Susceptible":
             self.check_exposure()  # Check if the agent gets exposed to the virus
         elif self.state == "Exposed":
@@ -43,14 +56,54 @@ class SIERDAgent(Agent):
         elif self.state == "Dead":
             pass  # No action for dead agents
 
-    def move(self):
+    def decide_to_wear_mask(self):
+        """
+        Use a Logit model to decide whether the agent should wear a mask.
+        """
+        # Define the features for the Logit model
+        features = np.array([
+            1,  # Bias term
+            1 if self.state in ["Infected", "Exposed"] else 0,  # Health state
+            self.model.transmission_rate,  # Environmental factor (transmission rate from model)
+            1 if self.infection_history else 0  # Infection history
+        ])
+        
+        # Define the Logit model parameters (these should be determined based on data or assumptions)
+        beta = np.array([0.5, 1.0, 2.0, 1.5])  # Example parameters, requires paper or research to adjust
+        
+        # Introduce a random error term to simulate unobserved factors
+        epsilon = np.random.normal(0, 1)  # Standard normal distribution
+        
+        # Calculate the logit value with the error term
+        logit = np.dot(features, beta) + epsilon
+        probability = 1 / (1 + np.exp(-logit))
+        
+        # Decide whether to wear a mask
+        self.wearing_mask = probability > 0.5
+
+    def move_to_work(self):
+        """
+        Move the agent to its workplace.
+        """
+        if not self.isolated and not self.model.is_lockdown(self.workplace):
+            self.model.grid.move_agent(self, self.workplace)
+
+    def move_to_residence(self):
+        """
+        Move the agent to its residence area.
+        """
+        if not self.isolated and not self.model.is_lockdown(self.residence_area):
+            self.model.grid.move_agent(self, self.residence_area)
+
+    def move_randomly(self):
         """
         Move the agent to a random neighboring cell.
         """
         if not self.isolated:
             possible_steps = self.model.grid.get_neighborhood(self.pos, moore=True, include_center=False)
             new_position = random.choice(possible_steps)
-            self.model.grid.move_agent(self, new_position)
+            if not self.model.is_lockdown(new_position):
+                self.model.grid.move_agent(self, new_position)
 
     def check_exposure(self):
         """
@@ -102,8 +155,8 @@ class SIERDAgent(Agent):
             if random.random() < self.model.recovery_rate:
                 self.state = "Recovered"  # Change state to recovered
                 self.recovered = True  # Mark the agent as recovered
-                if not self.wearing_mask:
-                    self.wearing_mask = random.random() < 0.8  # Recovered individuals are more likely to wear masks
+                self.infection_history.append(self.model.schedule.time)  # Add recovery time to infection history
+                self.decide_to_wear_mask()  # Decide to wear a mask based on new infection history
             else:
                 self.state = "Dead"  # Change state to dead
 
