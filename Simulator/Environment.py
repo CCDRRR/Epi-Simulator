@@ -11,10 +11,11 @@ from mesa.time import RandomActivation
 from mesa.space import MultiGrid
 from mesa.datacollection import DataCollector
 from Agent import SIERDAgent
-from MayorAgent import MayorAgent
+import numpy as np
+from AgentMayor import AgentMayor
 
 class SIERDModel(Model):
-    def __init__(self, width, height, density, transmission_rate, latency_period, infection_duration, recovery_rate, policy, num_districts, initial_infected):
+    def __init__(self, width, height, density, transmission_rate, latency_period, infection_duration, recovery_rate, policy, num_districts, initial_infected,mask_policy=False, lockdown=False):
         """
         Initialize a SIERDModel.
 
@@ -28,7 +29,9 @@ class SIERDModel(Model):
             recovery_rate: Probability of recovering from the infected state.
             policy: Policy applied to agents (e.g., Mask Policy Only, Lockdown Only)
             num_districts: Number of districts in the environment.
-            initial_infected: Number of initially infected agents
+            initial_infected: Number of initially infected agents.
+            mask_policy: Initial mask policy status (default: False).
+            lockdown: Initial lockdown status (default: False).
         """
         self.num_agents = int(width * height * density)
         self.grid = MultiGrid(width, height, True)
@@ -40,25 +43,23 @@ class SIERDModel(Model):
         self.policy = policy
         self.time_of_day = "morning"
         self.num_districts = num_districts
-        self.districts = self.create_districts(num_districts, width, height)
-        self.lockdown_areas = set()
-        self.mayor = MayorAgent("Mayor", self)
-
-
+        self.mask_policy = mask_policy
+        self.lockdown = lockdown
+        self.mayor = None
+        
+        # Initialize agents
         for i in range(self.num_agents):
             wearing_mask = False
             isolated = False
             if policy == "Mask Policy Only":
-                wearing_mask = True
+                self.mask_policy = True
             elif policy == "Lockdown Only":
-                isolated = True
+                self.lockdown = True
             elif policy == "Combination of Lockdown and Mask Policy":
-                wearing_mask = True
-                isolated = True
-            elif policy == "Mayor":
-                wearing_mask = False
-                isolated = False  
-                
+                self.mask_policy = True
+                self.lockdown = True
+            
+            # Create and place agent in a random position on the grid
             agent = SIERDAgent(i, self, wearing_mask, isolated)
             self.schedule.add(agent)
             x = self.random.randrange(self.grid.width)
@@ -70,7 +71,8 @@ class SIERDModel(Model):
         for agent in infected_agents:
             agent.state = "Infected"
             agent.infection_time = self.schedule.time
-
+        
+        
         self.datacollector = DataCollector(
             {"Susceptible": lambda m: self.count_state(m, "Susceptible"),
              "Exposed": lambda m: self.count_state(m, "Exposed"),
@@ -86,7 +88,7 @@ class SIERDModel(Model):
             model: The model instance.
             state: The state to count.
         """
-        return sum([1 for agent in model.schedule.agents if agent.state == state])
+        return sum([1 for agent in model.schedule.agents if isinstance(agent, SIERDAgent) and agent.state == state])
 
     def create_districts(self, num_districts, width, height):
         districts = {}
@@ -98,24 +100,42 @@ class SIERDModel(Model):
                     for y in range(j * step, (j + 1) * step):
                         districts[(x, y)] = district_id
         return districts
-
-    def is_lockdown(self, area):
-        return self.districts.get(area) in self.lockdown_areas
-
-    def set_lockdown(self, district_id):
-        self.lockdown_areas.add(district_id)
-
-    def lift_lockdown(self, district_id):
-        self.lockdown_areas.discard(district_id)
+    
+    # def adjust_parameters(self):
+        time = self.schedule.time
+        self.transmission_rate *= np.exp(-0.01 * time) # Transmission rate decreases over time
+        
+       # for agent in self.schedule.agents:
+       #     agent.latency_period = max(1, agent.latency_period - 0.01 * time) # Latency period decrease over time
+       #     agent.infection_duration = max(1, agent.infection_duration - 0.01 * time) # Infection duration decrease over time
+       #     agent.recovery_rate = max(1, agent.recovery_rate + 0.03 * time ) # Recovery rate increases over time
+            
 
     def step(self):
+        #self.adjust_parameters()
         self.datacollector.collect(self)
         self.schedule.step()
+        
+        # Update time of day
         if self.time_of_day == "morning":
             self.time_of_day = "afternoon"
         elif self.time_of_day == "afternoon":
+            self.time_of_day = "evening"
+        elif self.time_of_day =="evening":
             self.time_of_day = "night"
         else:
             self.time_of_day = "morning"
-            
-           
+        # If Mayor policy is active, execute Mayor's step
+        if self.mayor:
+            self.mayor.step()
+    
+    def export_policy_records(self, filename):
+        """
+        Export the policy records if the Mayor policy is active.
+        
+        Args:
+            filename: The filename to export the records.
+
+        """
+        if self.mayor:
+            self.mayor.export_policy_records(filename)
