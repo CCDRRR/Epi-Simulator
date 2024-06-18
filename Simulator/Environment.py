@@ -11,6 +11,7 @@ from mesa.time import RandomActivation
 from mesa.space import MultiGrid
 from mesa.datacollection import DataCollector
 from Agent import SIERDAgent
+from MayorAgent import MayorAgent
 
 class SIERDModel(Model):
     def __init__(self, width, height, density, transmission_rate, latency_period, infection_duration, recovery_rate, policy, num_districts, initial_infected):
@@ -41,6 +42,8 @@ class SIERDModel(Model):
         self.num_districts = num_districts
         self.districts = self.create_districts(num_districts, width, height)
         self.lockdown_areas = set()
+        self.mayor = MayorAgent("Mayor", self)
+
 
         for i in range(self.num_agents):
             wearing_mask = False
@@ -52,7 +55,10 @@ class SIERDModel(Model):
             elif policy == "Combination of Lockdown and Mask Policy":
                 wearing_mask = True
                 isolated = True
-            
+            elif policy == "Mayor":
+                wearing_mask = False
+                isolated = False  
+                
             agent = SIERDAgent(i, self, wearing_mask, isolated)
             self.schedule.add(agent)
             x = self.random.randrange(self.grid.width)
@@ -111,3 +117,5 @@ class SIERDModel(Model):
             self.time_of_day = "night"
         else:
             self.time_of_day = "morning"
+            
+           

@@ -37,12 +37,17 @@ class SIERDAgent(Agent):
         """
         The step method defines the agent's behavior at each time step.
         """
-        if self.model.time_of_day == "morning":
-            self.move_to_work()
-        elif self.model.time_of_day == "afternoon":
-            self.move_randomly()
-        elif self.model.time_of_day == "night":
-            self.move_to_residence()
+        if self.isolated:
+            if self.decide_to_move_during_lockdown():
+                self.move_randomly()
+        else:
+            if self.model.time_of_day == "morning":
+                self.move_to_work()
+            elif self.model.time_of_day == "afternoon":
+                self.move_randomly()
+            elif self.model.time_of_day == "night":
+                self.move_to_residence()
+        
 
         if self.state == "Susceptible":
             self.check_exposure()  # Check if the agent gets exposed to the virus
@@ -55,6 +60,8 @@ class SIERDAgent(Agent):
             self.check_reinfection()  # Check if the recovered agent gets re-exposed to the virus
         elif self.state == "Dead":
             pass  # No action for dead agents
+            
+        
 
     def decide_to_wear_mask(self):
         """
@@ -95,15 +102,15 @@ class SIERDAgent(Agent):
         if not self.isolated and not self.model.is_lockdown(self.residence_area):
             self.model.grid.move_agent(self, self.residence_area)
 
-    def move_randomly(self):
-        """
-        Move the agent to a random neighboring cell.
-        """
-        if not self.isolated:
-            possible_steps = self.model.grid.get_neighborhood(self.pos, moore=True, include_center=False)
-            new_position = random.choice(possible_steps)
-            if not self.model.is_lockdown(new_position):
-                self.model.grid.move_agent(self, new_position)
+    #def move_randomly(self):
+    #    """
+    #    Move the agent to a random neighboring cell.
+    #    """
+    #    if not self.isolated:
+    #        possible_steps = self.model.grid.get_neighborhood(self.pos, moore=True, include_center=False)
+    #        new_position = random.choice(possible_steps)
+    #        if not self.model.is_lockdown(new_position):
+    #            self.model.grid.move_agent(self, new_position)
 
     def check_exposure(self):
         """
@@ -176,3 +183,21 @@ class SIERDAgent(Agent):
                     self.state = "Exposed"  # Change state to exposed again
                     self.infection_time = self.model.schedule.time  # Record the time of re-exposure
                     break
+                
+                
+    def decide_to_move_during_lockdown(self):
+        """
+        Decide whether the agent moves during lockdown using a normal distribution.
+        """
+        # 使用正态分布决定是否移动
+        move_probability = np.random.normal(0.2, 0.05) 
+        return move_probability > 0.15  
+
+
+    def move_randomly(self):
+        """
+        Move the agent to a random neighboring cell.
+        """
+        possible_steps = self.model.grid.get_neighborhood(self.pos, moore=True, include_center=False)
+        new_position = random.choice(possible_steps)
+        self.model.grid.move_agent(self, new_position)

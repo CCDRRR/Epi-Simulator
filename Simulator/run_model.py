@@ -37,7 +37,7 @@ if __name__ == "__main__":
     args = parser.parse_args()
 
     # Define policies
-    policies = ["No Interventions", "Lockdown Only", "Mask Policy Only", "Combination of Lockdown and Mask Policy"]
+    policies = ["No Interventions", "Lockdown Only", "Mask Policy Only", "Combination of Lockdown and Mask Policy", "Mayor"]
 
     # Ensure the output directory exists
     if not os.path.exists(args.output_dir):
