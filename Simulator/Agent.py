@@ -9,9 +9,8 @@ import numpy as np
 import random
 from mesa import Agent
 
-
 class SIERDAgent(Agent):
-    def __init__(self, unique_id, model, district_id, wearing_mask=False, isolated=False, recovered=False):
+    def __init__(self, unique_id, model, wearing_mask=False, isolated=False, recovered=False):
         """
         Initialize a SIERDAgent.
 
@@ -23,35 +22,47 @@ class SIERDAgent(Agent):
             recovered: A boolean indicating if the agent has recovered (default: False).
         """
         super().__init__(unique_id, model)
-        super().__init__(unique_id, model)
-        self.state = "Susceptible"
-        self.infection_time = 0
-        self.wearing_mask = wearing_mask
-        self.isolated = isolated
-        self.recovered = recovered
-        self.infection_history = []
-        self.district_id = district_id  # Assign district ID to agent
-        self.residence_area = (random.randint(0, model.grid.width - 1), random.randint(0, model.grid.height - 1))
-        self.workplace = (random.randint(0, model.grid.width - 1), random.randint(0, model.grid.height - 1))
+        self.state = "Susceptible"  # Initial state of the agent
+        self.infection_time = 0  # Time step when the agent got exposed
+        self.wearing_mask = wearing_mask  # Indicates if the agent is wearing a mask
+        self.isolated = isolated  # Indicates if the agent is in isolation
+        self.recovered = recovered  # Indicates if the agent has recovered from infection
+        self.infection_history = []  # History of infections
 
         # Initialize residence and workplace
         self.residence_area = (random.randint(0, model.grid.width - 1), random.randint(0, model.grid.height - 1))
         self.workplace = (random.randint(0, model.grid.width - 1), random.randint(0, model.grid.height - 1))
-
+        
+        # Set Individual parameters with variability
+        # self.transmission_rate = np.random.lognormal(np.log(model.transmission_rate), 1.5) # I made this up
+        # self.latency_period = max(1, int(np.random.lognormal(np.log(model.latency_period), 1.5)))
+        # self.infection_duration = max(1, int(np.random.lognormal(np.log(model.infection_duration), 1.5)))
+        # self.recovery_rate = min(1, np.random.lognormal(np.log(model.recovery_rate), 2.0))
+        
     def step(self):
         """
         The step method defines the agent's behavior at each time step.
         """
-        if self.isolated:
-            if self.decide_to_move_during_lockdown():
-                self.move_randomly()
-        else:
-            if self.model.time_of_day == "morning":
+        if self.model.time_of_day == "morning":
+            if self.decide_to_move():
                 self.move_to_work()
-            elif self.model.time_of_day == "afternoon":
+            else:
+                self.stay_home()
+                
+        elif self.model.time_of_day == "afternoon":
+            if self.decide_to_move():
                 self.move_randomly()
-            elif self.model.time_of_day == "night":
+            else:
                 self.move_to_residence()
+                
+        elif self.model.time_of_day == "evening":
+            if self.decide_to_move():
+                self.move_randomly()
+            else:
+                self.move_to_residence()
+                
+        elif self.model.time_of_day == "night":
+            self.move_to_residence()
 
         if self.state == "Susceptible":
             self.check_exposure()  # Check if the agent gets exposed to the virus
@@ -69,50 +80,92 @@ class SIERDAgent(Agent):
         """
         Use a Logit model to decide whether the agent should wear a mask.
         """
+        # Check the state of agents in the same cell
+        cellmates = self.model.grid.get_cell_list_contents([self.pos])
+        exposed_or_infected_cellmates = sum(1 for cellmate in cellmates if cellmate.state in["Exposed", "Infected"])
+        total_cellmates = len(cellmates)
+        cellmate_infection_rate = exposed_or_infected_cellmates / total_cellmates if total_cellmates > 0 else 0 
+        
+        
         # Define the features for the Logit model
         features = np.array([
             1,  # Bias term
             1 if self.state in ["Infected", "Exposed"] else 0,  # Health state
             self.model.transmission_rate,  # Environmental factor (transmission rate from model)
-            1 if self.infection_history else 0  # Infection history
+            1 if self.infection_history else 0,  # Infection history
+            1 if self.model.mask_policy else 0, # Mask policy
+            1 if cellmate_infection_rate > 0.5 else 0 # High cellmate infection rate
         ])
-
+        
         # Define the Logit model parameters (these should be determined based on data or assumptions)
-        beta = np.array([0.5, 1.0, 2.0, 1.5])  # Example parameters, requires paper or research to adjust
-
+        beta = np.array([1, 2.0, 1.5, 1.5, 3.0, 2.0])  # Example parameters, requires paper or research to adjust
+        
         # Introduce a random error term to simulate unobserved factors
         epsilon = np.random.normal(0, 1)  # Standard normal distribution
-
+        
         # Calculate the logit value with the error term
         logit = np.dot(features, beta) + epsilon
         probability = 1 / (1 + np.exp(-logit))
-
+        
         # Decide whether to wear a mask
         self.wearing_mask = probability > 0.5
+    
+    def decide_to_move(self):
+        '''
+        Decide whether the agent moves using a Logit model
+        '''
+        # Define the features for the Logit model
+        features = np.array([
+            1, # Bias term
+            1 if self.model.lockdown else 0, # Lockdown State
+            1 if self.state in ["Infected", "Exposed"] else 0, # Health state
+            ])
+        
+        # Define the Logit model parameters
+        beta = np.array([1, -3.0, -1.0])
+        
+        # Introduce a random error term to simulate unobserved factors
+        epsilon = np.random.normal(0, 1) # Standard normal distribution
+        
+        # Calculate the logit value with the error term
+        logit = np.dot(features, beta) + epsilon
+        probability = 1 / (1 + np.exp(-logit))
+        
+        # Decide whether to move
+        return probability > 0.5
 
     def move_to_work(self):
         """
         Move the agent to its workplace.
         """
-        if not self.isolated and not self.model.is_lockdown(self.workplace):
+        if self.decide_to_move():
             self.model.grid.move_agent(self, self.workplace)
-
+        else:
+            self.stay_home()
+            
     def move_to_residence(self):
         """
         Move the agent to its residence area.
         """
-        if not self.isolated and not self.model.is_lockdown(self.residence_area):
-            self.model.grid.move_agent(self, self.residence_area)
+        self.model.grid.move_agent(self, self.residence_area)
+        
+    def move_randomly(self):
+        """
+        Move the agent to a random neighboring cell.
+        """
+        if self.decide_to_move():
+            possible_steps = self.model.grid.get_neighborhood(self.pos, moore=True, include_center=False)
+            new_position = random.choice(possible_steps)
+            self.model.grid.move_agent(self, new_position)
+        else:
+            self.stay_home()
+    
+    def stay_home(self):
+        '''
+        Ensure that the agent stays home
 
-    # def move_randomly(self):
-    #    """
-    #    Move the agent to a random neighboring cell.
-    #    """
-    #    if not self.isolated:
-    #        possible_steps = self.model.grid.get_neighborhood(self.pos, moore=True, include_center=False)
-    #        new_position = random.choice(possible_steps)
-    #        if not self.model.is_lockdown(new_position):
-    #            self.model.grid.move_agent(self, new_position)
+        '''
+        self.model.grid.move_agent(self, self.residence_area)
 
     def check_exposure(self):
         """
@@ -185,19 +238,3 @@ class SIERDAgent(Agent):
                     self.state = "Exposed"  # Change state to exposed again
                     self.infection_time = self.model.schedule.time  # Record the time of re-exposure
                     break
-
-    def decide_to_move_during_lockdown(self):
-        """
-        Decide whether the agent moves during lockdown using a normal distribution.
-        """
-        # 使用正态分布决定是否移动
-        move_probability = np.random.normal(0.2, 0.05)
-        return move_probability > 0.15
-
-    def move_randomly(self):
-        """
-        Move the agent to a random neighboring cell.
-        """
-        possible_steps = self.model.grid.get_neighborhood(self.pos, moore=True, include_center=False)
-        new_position = random.choice(possible_steps)
-        self.model.grid.move_agent(self, new_position)

@@ -11,39 +11,53 @@ import os
 import matplotlib.pyplot as plt
 from Environment import SIERDModel
 
+def run_simulation(width, height, density, transmission_rate, latency_period, infection_duration, recovery_rate, policy, num_districts, initial_infected, steps, output_dir):
+    """
+    Run the SIERD simulation.
 
-def run_simulation(width, height, density, transmission_rate, latency_period, infection_duration, recovery_rate, policy,
-                   num_districts, initial_infected, steps):
+    Args:
+        width: Width of the grid.
+        height: Height of the grid.
+        density: Density of the agents.
+        transmission_rate: Probability of transmission per contact.
+        latency_period: Number of steps an agent stays in the exposed state.
+        infection_duration: Number of steps an agent stays in the infected state.
+        recovery_rate: Probability of recovering from the infected state.
+        policy: Policy applied to agents (e.g., Mask Policy Only, Lockdown Only)
+        num_districts: Number of districts in the environment.
+        initial_infected: Number of initially infected agents.
+        steps: Number of steps to simulate.
+    """
+
     model = SIERDModel(width, height, density, transmission_rate, latency_period, infection_duration, recovery_rate,
                        policy, num_districts, initial_infected)
     for _ in range(steps):
         model.step()
-
     results = model.datacollector.get_model_vars_dataframe()
-    policy_history = pd.DataFrame(model.policy_history)
 
-    # Log the final policy history for verification
-    print(f"Final policy history: {policy_history.tail()}")
+    if policy == "Mayor":
+        policy_filename = os.path.join(output_dir, f"policy_records_{policy.replace(' ', '_').lower()}.csv")
+        model.export_policy_records(policy_filename)
+        print(f"Policy records saved to {policy_filename}")
 
-    return results, policy_history
-
-def process_results(results):
-    processed_results = results["InfectedByDistrict"].apply(pd.Series)
-    return processed_results
+    return results
 
 def save_results(results, filename):
-    results.to_csv(filename)
+    """
+    Save the simulation results to a CSV file.
 
-def save_policy_history(policy_history, filename):
-    df = pd.DataFrame(policy_history)
-    df.to_csv(filename, index=False)
+    Args:
+        results: The results dataframe.
+        filename: The filename to save the results.
+    """
+    results.to_csv(filename)
 
 if __name__ == "__main__":
     parser = argparse.ArgumentParser()
     parser.add_argument("--width", type=int, default=10, help="Width of the grid")
     parser.add_argument("--height", type=int, default=10, help="Height of the grid")
-    parser.add_argument("--density", type=float, default=0.9, help="Density of the agents")
-    parser.add_argument("--transmission_rate", type=float, default=0.6, help="Transmission rate of the virus")
+    parser.add_argument("--density", type=float, default=8, help="Density of the agents")
+    parser.add_argument("--transmission_rate", type=float, default=0.4, help="Transmission rate of the virus")
     parser.add_argument("--latency_period", type=int, default=15, help="Latency period of the virus")
     parser.add_argument("--infection_duration", type=int, default=50, help="Infection duration of the virus")
     parser.add_argument("--recovery_rate", type=float, default=0.3, help="Recovery rate from the virus")
@@ -60,23 +74,16 @@ if __name__ == "__main__":
     if not os.path.exists(args.output_dir):
         os.makedirs(args.output_dir)
 
-    # Run model for each policy
     for policy in policies:
         print(f"Running model with policy: {policy}")
-        results, policy_history = run_simulation(args.width, args.height, args.density, args.transmission_rate,
-                                                 args.latency_period, args.infection_duration, args.recovery_rate,
-                                                 policy, args.num_districts, args.initial_infected, args.steps)
+        results = run_simulation(args.width, args.height, args.density, args.transmission_rate, args.latency_period,
+                                 args.infection_duration, args.recovery_rate, policy, args.num_districts,
+                                 args.initial_infected, args.steps, args.output_dir)
 
-        # Save results to CSV
-        csv_filename = f"{args.output_dir}/results_{policy.replace(' ', '_').lower()}.csv"
+        csv_filename = os.path.join(args.output_dir, f"results_{policy.replace(' ', '_').lower()}.csv")
         save_results(results, csv_filename)
         print(f"Results saved to {csv_filename}")
 
-        # Save policy history to CSV
-        policy_csv_filename = f"{args.output_dir}/policy_history_{policy.replace(' ', '_').lower()}.csv"
-        save_policy_history(policy_history, policy_csv_filename)
-        print(f"Policy history saved to {policy_csv_filename}")
-
-        # Plot results
         results.plot(title=f"Policy: {policy}")
         plt.show()
+        
