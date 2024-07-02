@@ -101,7 +101,7 @@ class SIERDAgent(Agent):
         beta = np.array([1, 2.0, 1.5, 1.5, 3.0, 2.0])  # Example parameters, requires paper or research to adjust
         
         # Introduce a random error term to simulate unobserved factors
-        epsilon = np.random.normal(0, 1)  # Standard normal distribution
+        epsilon = np.random.gumbel(0, 1)  # Standard gumbal distribution
         
         # Calculate the logit value with the error term
         logit = np.dot(features, beta) + epsilon
@@ -125,7 +125,7 @@ class SIERDAgent(Agent):
         beta = np.array([1, -3.0, -1.0])
         
         # Introduce a random error term to simulate unobserved factors
-        epsilon = np.random.normal(0, 1) # Standard normal distribution
+        epsilon = np.random.gumbel(0, 1) # Standard gumbel distribution
         
         # Calculate the logit value with the error term
         logit = np.dot(features, beta) + epsilon
