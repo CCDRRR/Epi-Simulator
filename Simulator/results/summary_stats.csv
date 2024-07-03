@@ -1,0 +1,46 @@
+Policy,Density,Transmission Rate,Latency Period,Infection Duration,Recovery Rate,Peak Infected,Total Dead
+No Interventions,10,0.6,56,28,0.1,433.5,929.05
+Mask Policy Only,10,0.6,56,28,0.1,427.25,929.15
+Lockdown Only,10,0.6,56,28,0.1,439.7,901.55
+Combination of Lockdown and Mask Policy,10,0.6,56,28,0.1,425.4,900.1
+Mayor,10,0.6,56,28,0.1,432.0,929.0
+No Interventions,10,0.6,56,56,0.1,421.4,930.65
+Mask Policy Only,10,0.6,56,56,0.1,427.55,928.55
+Lockdown Only,10,0.6,56,56,0.1,436.5,909.2
+Combination of Lockdown and Mask Policy,10,0.6,56,56,0.1,427.1,913.45
+Mayor,10,0.6,56,56,0.1,428.0,926.45
+No Interventions,10,0.6,56,112,0.1,1000.0,995.65
+Mask Policy Only,10,0.6,56,112,0.1,1000.0,996.55
+Lockdown Only,10,0.6,56,112,0.1,657.0,960.15
+Combination of Lockdown and Mask Policy,10,0.6,56,112,0.1,676.85,962.05
+Mayor,10,0.6,56,112,0.1,1000.0,996.3
+No Interventions,10,0.6,56,28,0.5,427.4,629.0
+Mask Policy Only,10,0.6,56,28,0.5,424.15,630.1
+Lockdown Only,10,0.6,56,28,0.5,423.5,585.4
+Combination of Lockdown and Mask Policy,10,0.6,56,28,0.5,426.3,584.8
+Mayor,10,0.6,56,28,0.5,429.5,629.9
+No Interventions,10,0.6,56,56,0.5,432.1,619.8
+Mask Policy Only,10,0.6,56,56,0.5,428.5,625.45
+Lockdown Only,10,0.6,56,56,0.5,423.6,590.15
+Combination of Lockdown and Mask Policy,10,0.6,56,56,0.5,427.45,594.65
+Mayor,10,0.6,56,56,0.5,428.3,631.35
+No Interventions,10,0.6,56,112,0.5,999.95,911.5
+Mask Policy Only,10,0.6,56,112,0.5,1000.0,909.6
+Lockdown Only,10,0.6,56,112,0.5,667.2,870.9
+Combination of Lockdown and Mask Policy,10,0.6,56,112,0.5,669.85,873.25
+Mayor,10,0.6,56,112,0.5,1000.0,907.4
+No Interventions,10,0.6,56,28,0.7,433.95,455.3
+Mask Policy Only,10,0.6,56,28,0.7,429.4,449.5
+Lockdown Only,10,0.6,56,28,0.7,430.85,406.5
+Combination of Lockdown and Mask Policy,10,0.6,56,28,0.7,426.25,409.65
+Mayor,10,0.6,56,28,0.7,425.8,447.3
+No Interventions,10,0.6,56,56,0.7,426.7,445.2
+Mask Policy Only,10,0.6,56,56,0.7,436.6,442.25
+Lockdown Only,10,0.6,56,56,0.7,430.4,414.35
+Combination of Lockdown and Mask Policy,10,0.6,56,56,0.7,432.2,411.9
+Mayor,10,0.6,56,56,0.7,434.05,451.4
+No Interventions,10,0.6,56,112,0.7,1000.0,718.9
+Mask Policy Only,10,0.6,56,112,0.7,1000.0,717.9
+Lockdown Only,10,0.6,56,112,0.7,668.1,690.2
+Combination of Lockdown and Mask Policy,10,0.6,56,112,0.7,662.55,684.7
+Mayor,10,0.6,56,112,0.7,999.95,718.4

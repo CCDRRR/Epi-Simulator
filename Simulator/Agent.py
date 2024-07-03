@@ -34,10 +34,10 @@ class SIERDAgent(Agent):
         self.workplace = (random.randint(0, model.grid.width - 1), random.randint(0, model.grid.height - 1))
         
         # Set Individual parameters with variability
-        # self.transmission_rate = np.random.lognormal(np.log(model.transmission_rate), 1.5) # I made this up
-        # self.latency_period = max(1, int(np.random.lognormal(np.log(model.latency_period), 1.5)))
-        # self.infection_duration = max(1, int(np.random.lognormal(np.log(model.infection_duration), 1.5)))
-        # self.recovery_rate = min(1, np.random.lognormal(np.log(model.recovery_rate), 2.0))
+        self.transmission_rate = np.random.lognormal(np.log(model.transmission_rate), 0.7) # I made this up
+        self.latency_period = max(1, int(np.random.lognormal(np.log(model.latency_period), 1.5)))
+        self.infection_duration = max(1, int(np.random.lognormal(np.log(model.infection_duration), 1.5)))
+        self.recovery_rate = min(1, np.random.lognormal(np.log(model.recovery_rate), 0.7))
         
     def step(self):
         """
