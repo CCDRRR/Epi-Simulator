@@ -53,10 +53,6 @@ def save_results(results, filename):
 def main():
     
 
-    # Add logo to sidebar
-    logo = Image.open("UVA logo.png")
-    logo = logo.resize((80, 80)) # size of the logo
-    st.sidebar.image(logo, use_column_width=True)
     st.sidebar.title("Epi-Simulator")
     st.sidebar.write("Welcome to the Epi-Simulator for modeling the spread of infectious diseases and evaluating the effectiveness of various non-pharmaceutical interventions.")
 
