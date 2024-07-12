@@ -1,0 +1,5 @@
+pandas==2.0.3
+matplotlib==3.7.5
+salib==1.4.8
+mesa==0.8.7
+streamlit
